@@ -130,11 +130,11 @@ Explanation: The pkg-05 plan demonstrates a clear, diagnostic approach to fixing
 
 **Check rationale**
 
-Quoted from `tools/plan-check/rubric.md`:
+Quoted from `tools/plan-check/rubric.md`, check `diagnosis-grounded`:
 
-"Diagnosis is grounded: Plan names the root cause (a specific bug, misconfig, or missing piece in the code) and quotes or paraphrases the evidence that led to it."
+"The cause the plan names is something the repro evidence directly shows (a specific component, error, or behavior the steps pin down). A cause the evidence does not mention, or that contradicts the observed output, fails."
 
-This check is in the rubric because a plan that correctly identifies the root cause is more likely to produce a working fix. A plan that targets symptoms (e.g., "add validation") instead of causes will typically fix the surface problem but miss the underlying issue. By requiring diagnosis to be grounded in evidence, the rubric ensures the plan author has actually reproduced and understood the problem before attempting a fix.
+This check is in the rubric because a plan that correctly identifies the root cause is more likely to produce a working fix. A plan that targets symptoms (e.g., "add validation") instead of causes will typically fix the surface problem but miss the underlying issue. By requiring diagnosis to be grounded in evidence the repro steps actually produced, the rubric ensures the plan author has actually reproduced and understood the problem before attempting a fix.
 
 **Trade-offs**
 
