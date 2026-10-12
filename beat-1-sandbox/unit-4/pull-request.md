@@ -15,15 +15,11 @@ label is not graded.
 
 **Pull request**
 
-[Link to the pull request you opened. It must be the pull request's own page on the Path
-Review repo, not your fork's branch page.]
+https://github.com/codepath/pathreview-ai301-fa26-s1/pull/150
 
 **Branch**
 
-[The name of the branch the pull request comes from, exactly as it appears in your fork.
-The naming shape is a type prefix, then the issue number, then a short description. **The
-issue number in the branch name must be the number of the issue the pull request fixes** —
-a name carrying any other number does not satisfy this field.]
+fix/72-verify-hash-format
 
 ## Eval iterations
 
@@ -32,28 +28,32 @@ fields.
 
 **Run history**
 
-[The agreement score of each run you did, in order. A single run is a complete answer if
-only one run occurred. **The last score in your list must match the agreement line in the
-`eval-run.txt` you committed** — that file is the record of your final run.]
+Single full run:
+- Run 1 (final): 19/20 agreement (bar: 18/20: PASS)
+  - `agreement: 19/20 scored items  (bar: 18/20: PASS)`
+  - Categories: `clear-accept 6/7  not-tested 4/4  silent-drift 4/4  standards-wall 2/2  unreviewable 3/3`
 
 **Package analysis**
 
-[Pick one scored package (`pkg-01` through `pkg-20` — the four `calib-` packages are never
-scored). Name it by id, say what your rubric decided and what the gold label said, and
-explain why your rubric read it that way.]
+Package: `pkg-02`
+
+- Gold label: `accept` (category: `clear-accept`)
+- Rubric verdict: `reject`
+- Disagreement: yes (the only disagreement in the 20 scored packages; failed on `standards-and-disclosure`)
+
+Explanation: In `pkg-02` (source: Textualize/rich#4208), the author reordered the `save_*` methods cleanly to match the plan and provided before/after reproduction evidence. However, our rubric's `standards-and-disclosure` check strictly required conventional PR template sections and explicit checklist engagement. Because the author's PR description was concise and informal without explicit template section headers, our rubric graded `standards-and-disclosure` as `fail`, leading to a `reject` verdict. The gold label accepted the PR because the repo lacked strict PR template gating and the changelog asks were satisfied. This package analysis illustrates the strict standard our rubric applies to template completeness.
 
 **Check rationale**
 
-[Quote one check from the `rubric.md` you uploaded to `tools/pr-precheck/`, exactly as it reads now.
-Then say why it reads that way — what you revised to get there, or what you rejected in
-favour of it.]
+Quoted from `tools/pr-precheck/rubric.md`, check `plan-fidelity`:
+
+"The diff implements the changes authorized in the plan without unannounced additions (unrequested refactors, new flags, extra configs, or unrelated file changes). Planned changes omitted from the diff are acceptable only if explicitly documented as an honest shortfall or deferral in both plan deviation notes and the PR description. The description does not claim fixes or changes absent from the diff."
+
+Why it reads that way: A simple check that merely tests whether the diff touches the expected files allows silent drift to pass undetected when an author slips in unannounced configuration flags or unrelated refactors (such as in `pkg-03` and `pkg-09`). We deliberately crafted this condition to explicitly catch unannounced additions and false description claims while protecting honest shortfalls and scope deferrals (such as `pkg-13` and `pkg-16`), where incomplete implementations are transparently disclosed in both the plan's deviation notes and the PR description.
 
 **Trade-offs**
 
-[Every check gives something up. Any one of these is a complete answer: a package whose
-result it changes, a canary you re-ran with `--only`, a case you accept it will miss, or a
-stated reason nothing changed elsewhere. "Nothing changed, and here is how I know" earns
-the point in full when the reason follows.]
+Our `standards-and-disclosure` check gives up flexibility on repos with informal PR description customs in exchange for guaranteeing strict adherence on repositories with mandatory templates and policies. It successfully caught `pkg-01` (pandas checklist ignored) and `pkg-20` (Ghostty AI disclosure omitted), but it caused the single false reject on `pkg-02` (Textualize/rich), where an otherwise sound PR was penalized for lacking structured template section headers. This is a deliberate trade-off prioritizing compliance on standardized projects over leniency on informal ones.
 
 ---
 
