@@ -8,10 +8,9 @@ format criteria grade exactly that. Your course repo link is the whole submissio
 files and no evidence uploads are part of Assignment 5.
 
 **Contribution Number:** [1]
-**Student:** [Student name]
-**GitHub Username:** [your GitHub username, exactly as it appears on your profile - no @, no
-profile URL. Your comments upstream are identified by this name.]
-**Issue:** [GitHub issue link]
+**Student:** Modeste Houenou
+**GitHub Username:** Modeste01
+**Issue:** https://github.com/Arbeit-Studio/apikit/issues/27
 **Pull Request:** [GitHub PR link, once opened]
 
 One repository, built across units 5 to 8, telling the whole story of your real
@@ -55,10 +54,9 @@ happened; these entries are the toolkit's own timeline.
 All four entries are graded. Keep every heading below, and fill each
 one in the week it belongs to.
 
-**Unit 5: [one line on the tool work]**
+**Unit 5: Built and calibrated issue-scout to an early-career Python profile**
 
-[2-4 sentences: what you built (the scout, your strategy), what broke
-or fell short, what changed because of it.]
+I built issue-scout with a fit profile targeting backend logic and pytest-driven bugs (input validation, CLI edge cases, error-handling gaps) in isolated Python files, and a search strategy that traces each query to a profile clause. Two things fell short in the first real run: `gh search issues` silently returned empty results whenever a quoted multi-term `"A OR B OR C"` query was combined with `--label`/`--language` (it works alone, not combined), and once candidates were graded, the rubric's `unclaimed` check caught a repo-level collision I hadn't anticipated, a curated-portal pick (Apache Mahout #1506) that looked strong on paper but had an open competing PR (#1520) already fixing it. I split every multi-term query into single-term calls unioned before ranking (logged in `scan-notes.md`), and let the rubric's `unclaimed` check do its job rather than trusting a candidate's apparent fit, which is how it rejected Mahout #1506 and left `apikit#27` as the clean accept.
 
 **Unit 6: [one line on the tool work]**
 
@@ -80,24 +78,18 @@ drafted, what you did with the draft.]
 
 ## Why I Chose This Issue
 
-[1-2 paragraphs in your own words: how you searched, what your scan
-surfaced, what your scout's verdict said, why this issue fits your
-profile, and what you hope to learn. If your scout's verdict on it
-was reject and you chose it anyway, say so here and say why; choosing
-against your own tool silently is what loses points. Close with an
-honest read of the tool itself: where the scout fell short on a real
-wild search and what you changed or would change, or what convinced
-you it held up. **Record the link to your claim comment in this section too.**
-Not claimed yet? Write `claim pending` and today's date where the link goes,
-and add the link the moment your claim lands.]
+My scout surfaced `apikit#27` ("HTTPGatewaySpec silently ignores unknown arguments, including headers") from a scan that unioned single-term searches against my fit-profile queries and ranked 272 candidates down to a top 5. It graded `accept`: `HTTPGatewaySpec.__init__` takes `**kwargs` and silently drops unrecognized names, so a typo like `timout=5` or an unsupported `headers` argument just vanishes with no error, which is exactly the input-validation and error-handling-gap territory my profile targets. The fix is isolated to one file (`apikit/specs.py`), the maintainer's issue body includes a runnable repro snippet showing the actual broken output, it's a pure Python library with no asyncio or C-extension traps, and at scan time it had zero comments, no assignee, and no linked or competing PR. It's a smaller, newer-looking repo (2 stars) than I'd first assumed I wanted, but the issue's author is the project's own sole recent committer, so the maintainer is clearly active and engaged with their own tracker.
+
+I did consider a curated-portal candidate first, Apache Mahout `#1506` (a prestigious, well-starred project), but running it through the same rubric caught something a glance at star count would have missed: PR `#1520` was already open against that exact issue, and the thread showed a maintainer reserving it for an in-person hackathon. The rubric's `unclaimed` check rejected it on that evidence, which is the tool doing its job, not a shortcoming; rejecting against appearances is precisely why I built verification into the pipeline instead of eyeballing star counts. The one real gap I found in the scout this run was in search mechanics, not judgment: `gh search issues` needed single-term queries, not the OR syntax I'd written, which I've since fixed in `search-strategy.md`.
+
+claim pending (2026-10-21)
 
 **Toolkit**
 
-- Tool: issue-scout (your scout: your search strategy, your rubric),
-  and how you used it
-- What it produced: [the scan and its verdict on this issue, described]
-- Difficulties: [where it fell short, or "none met" if none did]
-- What changed: [what you patched or would update, or "nothing"]
+- Tool: issue-scout (my search strategy in `search-strategy.md`, my rubric in `rubric.md`), run as a live-mode scan over `gh search issues` results, then ranked and graded top 5
+- What it produced: `apikit#27` graded `accept` on all 4 required checks (`repo-active`, `unclaimed`, `bounded-scope`, `ai-policy-permitted`) and both preferred checks (`maintainer-responsive`, `clear-reproduction`); a competing curated-portal candidate, Mahout `#1506`, graded `reject` on `unclaimed` (open competing PR `#1520`)
+- Difficulties: `gh search issues` silently returns `[]` for a quoted multi-term OR query combined with `--label`/`--language`; no error, just an empty result set that looked like a strategy problem until isolated
+- What changed: split every multi-term query in `search-strategy.md` into single-term queries unioned by `jq` before ranking; logged the root cause in `scan-notes.md` so the next scan doesn't re-discover it
 
 ---
 
