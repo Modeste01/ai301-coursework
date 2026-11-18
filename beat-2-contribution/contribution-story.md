@@ -11,7 +11,7 @@ files and no evidence uploads are part of Assignment 5.
 **Student:** Modeste Houenou
 **GitHub Username:** Modeste01
 **Issue:** https://github.com/Arbeit-Studio/apikit/issues/27
-**Pull Request:** [GitHub PR link, once opened]
+**Pull Request:** https://github.com/Arbeit-Studio/apikit/pull/34
 
 One repository, built across units 5 to 8, telling the whole story of your real
 contribution. Fill it as you work, not at the end — the sections below ask for evidence that
@@ -62,10 +62,9 @@ I built issue-scout with a fit profile targeting backend logic and pytest-driven
 
 I installed `voice-guard` (`~/.claude/voice-guard/check_voice.py`) as a Claude Code `PreToolUse` hook backed by an extended `voice-guide.md` covering upstream maintainer communication (`Claims I post`, `Questions I ask`, `Pings I send`), updated `repro-check` and `plan-check` to their wild scopes, and patched `issue-scout/rubric.md` from the rigid 1–2 file `bounded-scope` rule to `scope-feasible` with a difficulty note (`straightforward`, `moderate`, `ambitious`). In the wiring test, `voice-guard` immediately stopped `gh issue comment --help` (`no body the guard can read`) and logged the interception to `~/.claude/voice-guard/guard-log.md`, then passed and logged my real claim comment (`--body-file claim-draft.md`) when posting to `Arbeit-Studio/apikit#27`. After forking and cloning `Arbeit-Studio/apikit`, I distilled the repo's Poetry/`pytest` 98%-coverage gate (`--cov=apikit --cov-fail-under=98`), commit conventions, and the `specs.py` -> `default.py` -> `protocols.py` subsystem map into a 27-line untracked `CLAUDE.local.md` excluded via `.git/info/exclude`.
 
-**Unit 7: [one line on the tool work]**
+**Unit 7: Configured ship-gate with coverage manifest, audited plan with plan-check, and enforced pre-PR gate**
 
-[2-4 sentences: the ship-gate and your gate manifest. What it produced
-on your real branch, what fought you, what changed because of it.]
+I installed `ship-gate` (`~/.claude/ship-gate/check_gate.py`) and configured `ship-manifest.md` to run `.venv/bin/pytest tests --cov-report term --cov=apikit --cov-fail-under=98` matching upstream CI. Before coding, I graded `plan.md` and `plan-comment.md` with `plan-check` (verdict: `accept`). When running `ship-gate` on branch `fix/27-http-gateway-spec-kwargs-headers`, the gate's `pr-precheck` hook caught two real friction points: a trailing blank line at EOF in `tests/test_specs.py`, and an undisclosed plan deviation regarding the in-process `python -O` test (infeasible due to `__debug__` compile-time constant). I amended the commit to strip whitespace, documented the subprocess verification in `plan.md` and `pr_draft.md`, and re-ran `ship-gate`, which passed and cleared the pull request for creation as PR #34.
 
 **Unit 8: [one line on the tool work]**
 
@@ -196,93 +195,164 @@ Claim comment posted on GitHub: https://github.com/Arbeit-Studio/apikit/issues/2
 
 **Analysis**
 
-[Your analysis of the root cause: what is causing the issue, traced
-to the files and functions involved.]
+In `apikit/specs.py`, `HTTPGatewaySpec.__init__` exhibits three root-cause validation and forwarding defects:
+1. `HTTPGatewaySpec.__init__` accepts `**kwargs` (`apikit/specs.py:65`) without validation or forwarding. Misspelled keyword arguments like `timout=5` are silently absorbed.
+2. `DefaultHTTPRequestGateway.__init__` (`apikit/default.py:124-141`) already accepts `headers: Optional[dict] = None`, but `HTTPGatewaySpec` neither defines a `headers` class attribute nor an `__init__` parameter, omitting `headers` from its `_gateway(...)` call (`apikit/specs.py:104-111`).
+3. Lines 86–87 rely on bare `assert _url` and `assert _method`. When Python runs with `-O`, assertions are stripped at compile/runtime, deferring crashes to `_gateway.prepare()` with `AttributeError: 'NoneType' object has no attribute 'value'`.
 
 **Proposed Solution**
 
-[High-level description of your fix approach, and what you are
-deliberately NOT changing.]
+- **In Scope:**
+  - `apikit/specs.py`:
+    1. Define class attribute `headers: Optional[dict] = None` on `HTTPGatewaySpec`.
+    2. Remove `**kwargs` from `HTTPGatewaySpec.__init__` so Python's keyword-only signature automatically raises `TypeError` on unrecognized arguments.
+    3. Add `headers: Optional[dict] = None` to `HTTPGatewaySpec.__init__` and resolve `_headers = headers or getattr(cls, "headers", None)`.
+    4. Pass `headers=_headers` when instantiating `self._gateway = _gateway(...)`.
+    5. Replace bare `assert _url` and `assert _method` with explicit `if not _url: raise ValueError("url must be provided")` and `if not _method: raise ValueError("method must be provided")`.
+  - `tests/test_specs.py`:
+    1. Update the 4 existing tests (lines 18–35) that assert `AssertionError` for missing/None `url` and `method` to assert `pytest.raises(ValueError)`.
+    2. Add unit tests for unexpected kwargs (`TypeError`), headers forwarding, and class-level headers inheritance/overrides.
+- **Out of Scope:**
+  - `apikit/default.py` and `apikit/protocols.py` (inspected; already accept and wire `headers` properly).
+  - `apikit/session.py` or unrelated subsystems.
 
 **Implementation Plan**
 
-1. [Modify file X to do Y]
-2. [Add or change Z]
-3. [Update tests]
+1. Edit `apikit/specs.py` to add `headers` class attribute, remove `**kwargs`, add `headers` parameter, pass `headers=_headers` to `_gateway(...)`, and replace `assert` with `ValueError`.
+2. Update existing tests in `tests/test_specs.py` from `AssertionError` to `ValueError`.
+3. Add new unit tests in `tests/test_specs.py` for unknown kwargs (`TypeError`), headers forwarding, and headers class-attribute override.
+4. Run full test suite with coverage gate: `.venv/bin/pytest tests --cov-report term --cov=apikit --cov-fail-under=98`.
 
-[Record deviations here as they happen: what changed mid-build and
-why. A recorded deviation is honest work; silent drift is not.]
+**Deviations Recorded During Implementation:**
+- *In-process `-O` test vs. subprocess verification:* `__debug__` is a Python compile-time constant, so pytest cannot simulate `-O` in-process without spawning a child interpreter. Because `apikit/specs.py` uses explicit `if not _url:` / `if not _method:` raises, normal pytest execution thoroughly exercises the `ValueError` logic. Direct execution with `python -O` was verified via subprocess in `test_evidence.md`.
+- *Additional test added:* Added `test_http_gateway_spec_init_headers_override_class_attribute` to ensure instance arguments take precedence over class-level defaults.
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: `plan-check` (with wild scope `plan-check-scope-wild.md`), run against `plan.md` and draft `plan-comment.md`
+- What it produced: `Verdict: accept` on all required checks (`diagnosis-grounded`, `scope-bounded`, `symptom-vs-cause`, `executable-by-stranger`, `test-plan-observable`, `comment-fits-thread`)
+- Difficulties: `plan-check` surfaced that in-process `-O` testing is impossible via pytest due to Python's compile-time `__debug__` constant, and advised testing it via subprocess verification
+- What changed: updated the plan and PR draft to document the subprocess verification under Deviations instead of attempting an infeasible in-process test fixture
 
 ---
 
 ## Testing Strategy
 
-[What observable checks prove the fix: your reproduction steps re-run
-against the built change (before and after), and the repo's own test
-suite or checks with the outcome shown. "Tests pass" with nothing
-observable named is not a strategy.]
+The fix was verified through three layers of observable checks:
+
+1. **Reproduction Snippets Re-run (Before vs. After):**
+   - *Typo keyword argument:* `.venv/bin/python -c '... HTTPGatewaySpec(url=..., method=..., timout=5) ...'`
+     - Before: Silently accepted; printed `timeout: None headers: None`.
+     - After: Immediately raised `TypeError: HTTPGatewaySpec.__init__() got an unexpected keyword argument 'timout'. Did you mean 'timeout'?`.
+   - *Headers forwarding:* `.venv/bin/python -c '... HTTPGatewaySpec(url=..., method=..., headers={"X-Custom": "value"}) ...'`
+     - Before: Dropped headers; printed `headers: None`.
+     - After: Successfully forwarded; printed `Forwarded headers: {'X-Custom': 'value'}`.
+   - *Optimization `-O` validation:* `.venv/bin/python -O -c '... HTTPGatewaySpec(url=..., method=None) ...'`
+     - Before: Initialized with `method=None` and crashed later in `prepare()` with `AttributeError`.
+     - After: Immediately raised `ValueError: method must be provided`.
+
+2. **Targeted Unit Tests in `tests/test_specs.py`:**
+   - Updated 4 existing tests (`test_http_gateway_spec_init_with_none_url`, `test_http_gateway_spec_init_with_no_url`, `test_http_gateway_spec_init_with_none_method`, `test_http_gateway_spec_init_no_method`) to assert `pytest.raises(ValueError, match=...)`.
+   - Added `test_http_gateway_spec_init_with_unexpected_kwarg` verifying `TypeError` for unknown keyword arguments.
+   - Added `test_http_gateway_spec_init_with_headers` verifying headers assignment to `_gateway.headers`.
+   - Added `test_http_gateway_spec_inheritance_with_headers_attribute` and `test_http_gateway_spec_init_headers_override_class_attribute` verifying subclass inheritance and instance override behavior.
+
+3. **Full Test Suite & Coverage Gate:**
+   - Ran `.venv/bin/pytest tests --cov-report term --cov=apikit --cov-fail-under=98`.
+   - Outcome: 100 passed (out of 100), 22 warnings, total coverage: **99.09%** (exceeding the repository's 98% required CI gate).
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: `pytest` and `pytest-cov` executed in local Python 3.14 virtual environment matching the project's CI configuration
+- What it produced: 100 passing unit tests and 99.09% coverage report across all `apikit` modules
+- Difficulties: none; the test suite is fast (13.55s) and deterministic
+- What changed: captured complete before-and-after terminal output into `test_evidence.md` for consumption by `ship-gate` and inclusion in the PR description
 
 ---
 
 ## Implementation Notes
 
-[A running log, added to as you work. Date each entry. What you
-built, decisions you made when you made them, wrong turns included.]
+**2026-11-12**
 
-**[Date]**
+Forked `Arbeit-Studio/apikit`, cloned locally, and created untracked `CLAUDE.local.md` excluded via `.git/info/exclude`. Established local Python 3.14 environment and confirmed that all 96 existing tests passed at 99.07% coverage. Verified the three reported failure mechanisms: `timout=5` and `headers` silently dropped into `**kwargs`, and `python -O` stripping `assert _method`. Posted verified claim comment on GitHub (`#issuecomment-6816045005`).
 
-[Entry]
+**2026-11-18**
 
-**[Date]**
+Installed `ship-gate` and configured `ship-manifest.md`. Drafted `plan.md` and `plan-comment.md`, audited with `plan-check` (`Verdict: accept`), and branched `fix/27-http-gateway-spec-kwargs-headers`. Implemented the fix in `apikit/specs.py` (+8/-3 lines) and updated/added tests in `tests/test_specs.py` (+39/-4 lines). 
 
-[Entry]
+Ran `ship-gate`, which caught two real issues before PR creation: (1) an extraneous blank line at EOF in `tests/test_specs.py`, and (2) an undocumented plan deviation regarding why `-O` is verified via subprocess rather than an in-process pytest test. Amended the commit to clean the diff, documented the deviation in `plan.md` and `pr_draft.md`, and re-ran `ship-gate`, which passed all checks (`ship-gate: PASS`). Pushed branch `fix/27-http-gateway-spec-kwargs-headers` to fork and opened PR #34 on `Arbeit-Studio/apikit`.
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: Git CLI (`git switch -c`, `git commit --amend`), Python virtualenv, and `ship-gate` (`check_gate.py`)
+- What it produced: Clean two-file commit `d4eb733` (+46/-7 lines), clean test run (100 passed, 99.09% cov), and successful PR creation
+- Difficulties: `ship-gate` strictly rejected the branch on the first pass due to trailing whitespace and missing deviation documentation
+- What changed: fixed the formatting in `tests/test_specs.py` and updated `plan.md` and `pr_draft.md` with explicit deviation disclosures
 
 ---
 
 ## Pull Request
 
-**PR Link:** [GitHub PR URL when opened]
+**PR Link:** https://github.com/Arbeit-Studio/apikit/pull/34
 
-**PR Description:** [what the PR says; much of the content above
-adapts into it]
+**PR Description:**
+
+```markdown
+Fixes #27
+
+### Summary of Changes
+
+This pull request resolves parameter-handling and validation defects in `HTTPGatewaySpec` (`apikit/specs.py`):
+1. **Removes `**kwargs` from `HTTPGatewaySpec.__init__`**: Unknown or misspelled arguments (such as `timout=5`) now immediately raise Python's standard `TypeError: HTTPGatewaySpec.__init__() got an unexpected keyword argument 'timout'` instead of being silently ignored.
+2. **Adds `headers` support**: Defines `headers: Optional[dict] = None` as a class attribute and `__init__` parameter, properly resolving `_headers = headers or getattr(cls, "headers", None)` and passing `headers=_headers` to the underlying gateway instance (`_gateway(...)`).
+3. **Replaces `assert` checks with `ValueError`**: `url` and `method` validation in `HTTPGatewaySpec` now raises `ValueError` if missing or empty, ensuring validation is not stripped when running under `python -O`.
+4. **Test coverage**: Updates existing tests expecting `AssertionError` to `ValueError`, and adds unit tests covering unexpected kwargs (`TypeError`), headers forwarding, and class-level headers inheritance.
+
+### Environment
+
+- **OS / Runtime:** Ubuntu Linux (WSL2), Python 3.14.5, `pytest 9.2.0`, `pytest-cov 7.1.0`
+- **Base Commit:** Tested against `main` head at `1ab23325d6a94253a523a462927607dd00959e20` (v0.1.10, no version delta)
+
+### Verification and Test Evidence
+
+**Before the fix:**
+- Unknown kwargs and headers were dropped without error:
+  `timeout: None headers: None`
+- Missing `method` under `python -O` bypassed assertion and failed later in `prepare()`:
+  `Crash deferred to prepare(): AttributeError 'NoneType' object has no attribute 'value'`
+
+**After the fix:**
+- Typo keyword argument raises expected `TypeError`:
+  `Caught expected TypeError for timout=5: HTTPGatewaySpec.__init__() got an unexpected keyword argument 'timout'. Did you mean 'timeout'?`
+- Configured headers are forwarded to `spec._gateway.headers`:
+  `Forwarded headers: {'X-Custom': 'value'}`
+- Missing `method` under `python -O` raises `ValueError` immediately:
+  `Caught expected ValueError under python -O: method must be provided`
+- Full test suite passing with 99.09% coverage (exceeding required 98% gate):
+  `100 passed, 22 warnings in 13.55s (Total coverage: 99.09%)`
+
+### Deviations from Initial Plan
+
+- **`-O` test verification**: Initial planning considered an in-process pytest test for `python -O`. Because `__debug__` is a Python compile-time constant, pytest cannot simulate `-O` in-process. Replacing `assert` with explicit `if not _url:` / `if not _method:` raises guarantees that the checks run unconditionally under all optimization levels, which was verified via subprocess in `test_evidence.md`.
+- **Extra test added**: Added `test_http_gateway_spec_init_headers_override_class_attribute` to ensure instance arguments override class-level defaults.
+
+### AI Assistance Disclosure
+
+Claude Code assisted with inspecting parameter propagation through `DefaultHTTPRequestGateway`, drafting minimal reproducer snippets, and checking coverage requirements against CI. All logic changes, tests, and verifications were reviewed, executed, and confirmed locally.
+```
 
 **Maintainer Feedback:**
 
-- [Date]: [feedback received, or "none yet"; silence is a normal
-  state and costs you nothing]
-- [Date]: [how you addressed it]
+- 2026-11-18: PR opened; awaiting maintainer review.
 
-**Status:** [Awaiting review / Iterating / Merged / Closed. The
-status is a fact you record, never a grade: the PR is graded as
-opened.]
+**Status:** Awaiting review
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: `ship-gate` (`~/.claude/ship-gate/check_gate.py`) and `voice-guard` (`~/.claude/voice-guard/check_voice.py`), run before PR creation via Claude Code
+- What it produced: automated verification pass (`ship-gate: PASS`) confirming repo tests (100 passed, 99.09% coverage) and `pr-precheck` quality gates before submitting PR #34 to `Arbeit-Studio/apikit`
+- Difficulties: ensuring `gh repo set-default` pointed at `Arbeit-Studio/apikit` so the PR was opened against the upstream repository rather than the personal fork
+- What changed: ran `gh repo set-default Arbeit-Studio/apikit` prior to invocation, ensuring Claude Code opened PR #34 directly on the upstream project
 
 ---
 
