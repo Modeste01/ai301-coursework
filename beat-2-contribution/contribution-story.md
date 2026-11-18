@@ -66,10 +66,9 @@ I installed `voice-guard` (`~/.claude/voice-guard/check_voice.py`) as a Claude C
 
 I installed `ship-gate` (`~/.claude/ship-gate/check_gate.py`) and configured `ship-manifest.md` to run `.venv/bin/pytest tests --cov-report term --cov=apikit --cov-fail-under=98` matching upstream CI. Before coding, I graded `plan.md` and `plan-comment.md` with `plan-check` (verdict: `accept`). When running `ship-gate` on branch `fix/27-http-gateway-spec-kwargs-headers`, the gate's `pr-precheck` hook caught two real friction points: a trailing blank line at EOF in `tests/test_specs.py`, and an undisclosed plan deviation regarding the in-process `python -O` test (infeasible due to `__debug__` compile-time constant). I amended the commit to strip whitespace, documented the subprocess verification in `plan.md` and `pr_draft.md`, and re-ran `ship-gate`, which passed and cleared the pull request for creation as PR #34.
 
-**Unit 8: [one line on the tool work]**
+**Unit 8: Configured PR-monitor with playbook rules and evaluated live PR state**
 
-[2-4 sentences: the PR-monitor and your playbook. What it read, what it
-drafted, what you did with the draft.]
+I configured `pr-monitor` (`~/.claude/pr-monitor/monitor.py`) backed by a repository-grounded `playbook.md` with a 7-day staleness threshold derived from historical response times in `Arbeit-Studio/apikit` merged PRs (#7 and #8). When executed against my branch for PR #34, the monitor read the live GitHub PR state (0 reviews, 0 comments, quiet since opening) and correctly drafted a wait note advising against premature nudging. Because the thread had only been open for under a day, I followed the playbook's guidance and kept the wait note private rather than posting an unnecessary ping.
 
 ---
 
@@ -282,6 +281,10 @@ Installed `ship-gate` and configured `ship-manifest.md`. Drafted `plan.md` and `
 
 Ran `ship-gate`, which caught two real issues before PR creation: (1) an extraneous blank line at EOF in `tests/test_specs.py`, and (2) an undocumented plan deviation regarding why `-O` is verified via subprocess rather than an in-process pytest test. Amended the commit to clean the diff, documented the deviation in `plan.md` and `pr_draft.md`, and re-ran `ship-gate`, which passed all checks (`ship-gate: PASS`). Pushed branch `fix/27-http-gateway-spec-kwargs-headers` to fork and opened PR #34 on `Arbeit-Studio/apikit`.
 
+**2026-11-18 (Continued)**
+
+Followed through on the original Nov 12 claim commitment by running a courtesy check-in draft through `voice-guard` and posting comment #6994055895 on issue #27 reporting local reproduction environment and linking PR #34. Installed `ai301-unit8-starter` materials, authored `~/.claude/pr-monitor/playbook.md` with response rules, staleness thresholds, nudge etiquette, and walk-away criteria calibrated to `apikit`'s historical PR merge cadence. Ran `pr-monitor --state` and a full run on PR #34; the tool generated `run-report.md` and `drafted-move.md`, recommending a quiet wait note in full agreement with the 7-day playbook threshold.
+
 **Toolkit**
 
 - Tool: Git CLI (`git switch -c`, `git commit --amend`), Python virtualenv, and `ship-gate` (`check_gate.py`)
@@ -343,7 +346,7 @@ Claude Code assisted with inspecting parameter propagation through `DefaultHTTPR
 
 **Maintainer Feedback:**
 
-- 2026-11-18: PR opened; awaiting maintainer review.
+- 2026-11-18: none yet
 
 **Status:** Awaiting review
 
@@ -360,25 +363,22 @@ Claude Code assisted with inspecting parameter propagation through `DefaultHTTPR
 
 **Technical Skills Gained**
 
-[What you learned technically, named concretely.]
+I deepened my understanding of Python descriptor protocols and parameter forwarding by tracing how `HTTPGatewaySpec` binds and forwards attributes to `DefaultHTTPRequestGateway` and underlying `session.request` invocations. I mastered strict keyword argument handling in Python class constructors: omitting catch-all `**kwargs` allows Python to enforce keyword validity automatically via `TypeError` rather than letting misspelled parameters silently vanish. Additionally, I learned the critical runtime implications of Python optimization flags: because `__debug__` is evaluated at compile time, bare `assert` statements are stripped when running under `python -O`, requiring explicit `ValueError` validation checks for unconditional production enforcement. Finally, I gained practical experience maintaining test suites under strict coverage gates (`pytest --cov-fail-under=98`), designing edge-case unit tests for unexpected arguments, headers forwarding, and subclass inheritance.
 
 **Challenges Overcome**
 
-[What was hard and how you solved it; point at the real events, the
-Toolkit blocks above are full of them.]
+The biggest tooling challenge was diagnosing why `gh search issues` returned empty results during initial scanning: queries combining quoted multi-term OR expressions with `--label` and `--language` filters silently drop all matches in GitHub's search API. I overcame this by restructuring the search strategy into discrete single-term queries unioned with `jq`. On the workflow side, `ship-gate` rejected my initial PR branch for a trailing blank line at EOF in `tests/test_specs.py` and flagged an undisclosed deviation between my planned in-process `-O` test and the subprocess verification necessitated by `__debug__`'s compile-time semantics. I resolved this by cleaning the diff, documenting the subprocess testing rationale in `plan.md` and `pr_draft.md`, and clearing all automated gate checks before submission. When drafting upstream comments, `voice-guard` caught drafts that omitted exact dependency and environment deltas, ensuring all public communication remained grounded in verified artifacts.
 
 **What I'd Do Differently Next Time**
 
-[Reflection on your process.]
+Next time, I will investigate test runtime constraints and optimization mechanics during initial plan formulation rather than during implementation, recognizing early that Python's `__debug__` constant prevents in-process optimization testing. I would also establish repository conventions in `CLAUDE.local.md` before writing the first line of code to eliminate formatting and whitespace friction during pre-PR gate checks.
 
 ---
 
 ## Resources Used
 
-[What actually helped, not a reading list. List things this story
-already shows you using: the doc you followed to set the environment
-up, the thread that explained the bug, the person who answered you.
-One real entry beats ten plausible ones.]
-
-- [Link to documentation that helped]
-- [Discussion, issue, or post that helped]
+- Arbeit-Studio/apikit Issue #27 ("HTTPGatewaySpec silently ignores unknown arguments, including headers"): https://github.com/Arbeit-Studio/apikit/issues/27
+- Arbeit-Studio/apikit Pull Request #34 ("Validate arguments and forward headers in HTTPGatewaySpec"): https://github.com/Arbeit-Studio/apikit/pull/34
+- Python Language Reference documentation on the `assert` statement and `__debug__`: https://docs.python.org/3/reference/simple_stmts.html#the-assert-statement
+- Python Tutorial documentation on Keyword Arguments and Function Annotations: https://docs.python.org/3/tutorial/controlflow.html#keyword-arguments
+- pytest-cov Documentation on Configuration and `--cov-fail-under`: https://pytest-cov.readthedocs.io/en/latest/config.html
